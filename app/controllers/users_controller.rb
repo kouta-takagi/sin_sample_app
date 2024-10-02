@@ -9,15 +9,17 @@ class UsersController < ApplicationController
   def create
     @user = User.new(user_params)
     if @user.save
-      UserMailer.account_activation(@user).deliver_now
-      flash[:info] = "確認おね"
+      @user.send_activation_email
+      flash[:info] = '確認おね'
       redirect_to root_url
     else
       render 'new', status: :unprocessable_entity
     end
   end
+
   def show
     @user = User.find(params[:id])
+    redirect_to root_url and return unless @user.activated?
   end
 
   def edit
@@ -25,7 +27,7 @@ class UsersController < ApplicationController
 
   def update
     if @user.update(user_params)
-      flash[:success] = "でけた"
+      flash[:success] = 'でけた'
       redirect_to @user
     else
       render 'edit', status: :unprocessable_entity
@@ -33,26 +35,27 @@ class UsersController < ApplicationController
   end
 
   def index
-    @users = User.paginate(page: params[:page])
+    @users = User.where(activated: true).paginate(page: params[:page])
   end
 
   def destroy
     User.find(params[:id]).destroy
-    flash[:success] = "User deleted"
+    flash[:success] = 'User deleted'
     redirect_to users_url, status: :see_other
   end
 
   private
+
   def user_params
     params.require(:user).permit(:name, :email, :password, :password_confirmation)
   end
 
   def logged_in_user
-    unless logged_in?
-      store_location
-      flash[:danger] = "ログインせーよ"
-      redirect_to login_url, status: :see_other
-    end
+    return if logged_in?
+
+    store_location
+    flash[:danger] = 'ログインせーよ'
+    redirect_to login_url, status: :see_other
   end
 
   def correct_user
